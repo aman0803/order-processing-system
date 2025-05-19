@@ -1,0 +1,91 @@
+version: '3.8'
+
+name: order-processing-system
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3.8
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:3.4
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_INTERNAL://:29092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+      - postgres-order
+    environment:
+      KAFKA_BROKERS: "kafka:29092"
+      DB_HOST: "postgres-order"
+      DB_PORT: "5432"
+      DB_USER: "orderuser"
+      DB_PASSWORD: "orderpass"
+      DB_NAME: "orderdb"
+
+  inventory-service:
+    build: ./inventory-service
+    depends_on:
+      - kafka
+      - postgres-inventory
+    environment:
+      KAFKA_BROKERS: "kafka:29092"
+      DB_HOST: "postgres-inventory"
+      DB_PORT: "5432"
+      DB_USER: "inventoryuser"
+      DB_PASSWORD: "inventorypass"
+      DB_NAME: "inventorydb"
+
+  notification-service:
+    build: ./notification-service
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BROKERS: "kafka:29092"
+      SMTP_HOST: "smtp.example.com"
+      SMTP_PORT: "587"
+      SMTP_USER: "user@example.com"
+      SMTP_PASSWORD: "password"
+
+  postgres-order:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: "orderuser"
+      POSTGRES_PASSWORD: "orderpass"
+      POSTGRES_DB: "orderdb"
+    ports:
+      - "5432:5432"
+    volumes:
+      - order-data:/var/lib/postgresql/data
+
+  postgres-inventory:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: "inventoryuser"
+      POSTGRES_PASSWORD: "inventorypass"
+      POSTGRES_DB: "inventorydb"
+    ports:
+      - "5433:5432"
+    volumes:
+      - inventory-data:/var/lib/postgresql/data
+
+volumes:
+  order-data:
+  inventory-data:
