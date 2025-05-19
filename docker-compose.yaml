@@ -26,7 +26,9 @@ services:
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
 
   order-service:
-    build: ./order-service
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     depends_on:
@@ -39,9 +41,13 @@ services:
       DB_USER: "orderuser"
       DB_PASSWORD: "orderpass"
       DB_NAME: "orderdb"
+    volumes:
+      - ./order-service/.env:/app/.env
 
   inventory-service:
-    build: ./inventory-service
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
     depends_on:
       - kafka
       - postgres-inventory
@@ -52,9 +58,13 @@ services:
       DB_USER: "inventoryuser"
       DB_PASSWORD: "inventorypass"
       DB_NAME: "inventorydb"
+    volumes:
+      - ./inventory-service/.env:/app/.env
 
   notification-service:
-    build: ./notification-service
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
     depends_on:
       - kafka
     environment:
@@ -63,6 +73,8 @@ services:
       SMTP_PORT: "587"
       SMTP_USER: "user@example.com"
       SMTP_PASSWORD: "password"
+    volumes:
+      - ./notification-service/.env:/app/.env
 
   postgres-order:
     image: postgres:14
